@@ -130,4 +130,28 @@ public class CSVUtilTest {
         listFilter.block().forEach(System.out::println);
     }
 
+    @Test
+    void consultaPorPartidosGanados(){
+        List<Player> list = CsvUtilFile.getPlayers();
+        Flux<Player> listFlux = Flux.fromStream(list.parallelStream()).cache();
+        Mono<Map<Integer, Collection<Player>>> listFilter = listFlux
+                .filter(player -> player.winners >= 80)
+                .map(player -> {
+                    player.name = player.name.toUpperCase(Locale.ROOT);
+                    return player;
+                })
+                .buffer(1000)
+                .flatMap(playerA -> listFlux
+                        .filter(playerB -> playerA.stream()
+                                .anyMatch(a ->
+                                    a.winners >= playerB.winners
+                                )))
+                .distinct()
+                .collectMultimap(Player::getWinners);
+
+        System.out.println("Jugadores con más de 1250 partidos ganados: " +
+                listFilter.block().size() + "\n");
+        //assert listFilter.block().size() == 322;
+    }
+
 }
